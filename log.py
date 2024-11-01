@@ -1,78 +1,27 @@
-import tensorflow as tf
-import json
-import rlds
-import os
+import envlogger
+import time
+from env import RoboticArmEnv
 
-class RLDSLogger:
-    def __init__(self, log_dir='./rlds_log'):
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_path = os.path.join(log_dir, 'data.tfrecord')
-        self.writer = tf.data.experimental.TFRecordWriter(self.log_path)
-        self.episode_data = []
-        self.current_episode = []
-        
-    def start_episode(self):
-        self.current_episode = []
-        print("Starting episode (log.py)")
+def start_logging(xarm):
+    log_path = './rlds_log'
 
-    def log_step(self, xarm, discount=1.0, step_metadata=None):
-        joint_states = xarm.arm.get_joint_states(is_radian=True)
-        joint_ang, joint_vel, joint_eff = joint_states[1]
+    # Wrap environment in envlogger
+    logged_env = envlogger.EnvLogger(RoboticArmEnv(xarm), data_directory=log_path)
 
-        observation = {
-            "servo_angle" : joint_ang,
-            "servo_velocity" : joint_vel,
-            "servo_effort" : joint_eff
-        }
+    try:
+        observation = logged_env.reset()
+        done = False
 
-        action = 0
+        while True:
+            action = None 
+            observation, reward, done, info = logged_env.step(action)
 
-        reward = 0
+            # time.sleep(0.1)
 
-        step_data = {
-            "observation": observation,
-            "action": action,
-            "reward": reward,
-            "discount": discount,
-            "step_metadata": step_metadata if step_metadata else {}
-        }
-        self.current_episode.append(step_data)
+            if done:
+                observation = logged_env.reset()
 
-    def end_episode(self):
-        for step in self.current_episode:
-            example = self._create_tf_example(step)
-            self.writer.write(example.SerializeToString())
-        print("Ending episode (log.py)")
-
-    def save(self):
-        dataset = tf.data.Dataset.from_tensor_slices(self.episode_data)
-        self.writer.write(dataset)
-        print(f"Data saved to {self.log_path}")
-
-    def _create_tf_example(self, step):
-        def _bytes_feature(value):
-            if isinstance(value, dict):
-                # Serialize dictionary as shown earlier
-                serialized_dict = json.dumps(value).encode('utf-8')
-                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[serialized_dict]))
-            elif isinstance(value, str):
-                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value.encode('utf-8')]))
-            else:
-                # Convert value to a bytes representation
-                value_bytes = tf.io.serialize_tensor(tf.convert_to_tensor(value)).numpy()
-                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value_bytes]))        
-
-        def _float_feature(value):
-            return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
-        features = {
-            "observation": _bytes_feature(step["observation"]),
-            "action": _bytes_feature(step["action"]),
-            "reward": _float_feature(step["reward"]),
-            "discount": _float_feature(step["discount"])
-        }
-
-        if "step_metadata" in step:
-            features["step_metadata"] = _bytes_feature(step["step_metadata"])
-
-        return tf.train.Example(features=tf.train.Features(feature=features))
+    except KeyboardInterrupt:
+        print("Data collection interrupted, closing the logger.")
+    finally:
+        logged_env.close()

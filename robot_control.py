@@ -4,7 +4,9 @@ import time
 import transforms3d as t3d
 from vr_test import get_transforms
 import matplotlib.pyplot as plt
-from log import RLDSLogger
+
+from log import start_logging
+import threading
 
 # For custom wrapper over xArm6 Python API
 # export PYTHONPATH=$PYTHONPATH:/home/erl-tianyu/dwait_local_repo/erl_xArm/
@@ -340,5 +342,17 @@ if __name__ == "__main__":
         tcp_z_offset=145
     )
   
-    robot_control_xarmapi(control_mode=xarm_control_mode, use_position_pid=True)
-    # test_robot_IK()
+    def control_robot():
+        robot_control_xarmapi(control_mode=xarm_control_mode, use_position_pid=True)
+
+    def envlog():
+        start_logging(xarm)
+
+    control_thread = threading.Thread(target=control_robot)
+    logging_thread = threading.Thread(target=envlog)
+
+    control_thread.start()
+    logging_thread.start()
+
+    control_thread.join()
+    logging_thread.join() 

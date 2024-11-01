@@ -1,15 +1,18 @@
 import tensorflow as tf
 import rlds
+import os
 
 class RLDSLogger:
-    def __init__(self, log_dir='/rlds_log'):
-        self.log_dir = log_dir
-        self.writer = tf.data.experimental.TFRecordWriter(f'{log_dir}/data.tfrecord')
+    def __init__(self, log_dir='./rlds_log'):
+        os.makedirs(log_dir, exist_ok=True)
+        self.log_path = os.path.join(log_dir, 'data.tfrecord')
+        self.writer = tf.data.experimental.TFRecordWriter(self.log_path)
         self.episode_data = []
         self.current_episode = []
         
     def start_episode(self):
         self.current_episode = []
+        print("Starting episode (log.py)")
 
     def log_step(self, xarm, discount=1.0, step_metadata=None):
         joint_states = xarm.arm.get_joint_states(is_radian=True)
@@ -37,7 +40,9 @@ class RLDSLogger:
     def end_episode(self):
         episode = rlds.from_list(self.current_episode)
         self.episode_data.append(episode)
+        print("Ending episode (log.py)")
 
     def save(self):
         dataset = tf.data.Dataset.from_tensor_slices(self.episode_data)
         self.writer.write(dataset)
+        print(f"Data saved to {self.log_path}")

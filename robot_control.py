@@ -181,7 +181,7 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
     fetch_init_poses()
     prev_actual_robot_jang = np.array(init_jangs)
 
-    logger = RLDSLogger(log_dir="rlds_log")
+    logger = RLDSLogger()
     logger.start_episode()
 
     while True:

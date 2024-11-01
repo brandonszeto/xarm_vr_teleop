@@ -183,9 +183,6 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
     fetch_init_poses()
     prev_actual_robot_jang = np.array(init_jangs)
 
-    logger = RLDSLogger()
-    logger.start_episode()
-
     while True:
         loop_start_time = time.time()
 
@@ -202,8 +199,6 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
             recover_oob_from_pos = None
             print("\nController traveled too far while out of bounds for detection. Exiting to avoid potentially unsafe situation")
             break
-
-        logger.log_step(xarm)
 
         trajectory.append(eef_pos_target)
 
@@ -302,9 +297,6 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
         if loop_duration < 1/control_freq:
             time.sleep(1/control_freq - loop_duration)
         duration += 1/control_freq
-
-    logger.end_episode()
-    logger.save()
 
     xarm.reset()
     xarm.close()

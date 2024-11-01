@@ -38,11 +38,31 @@ class RLDSLogger:
         self.current_episode.append(step_data)
 
     def end_episode(self):
-        episode = rlds.from_list(self.current_episode)
-        self.episode_data.append(episode)
+        for step in self.current_episode:
+            example = self._create_tf_example(step)
+            self.writer.write(example.SerializeToString())
         print("Ending episode (log.py)")
 
     def save(self):
         dataset = tf.data.Dataset.from_tensor_slices(self.episode_data)
         self.writer.write(dataset)
         print(f"Data saved to {self.log_path}")
+
+    def _create_tf_example(self, step):
+        def _bytes_feature(value):
+            return tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.serialize_tensor(tf.convert_to_tensor(value)).numpy()]))
+        
+        def _float_feature(value):
+            return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+
+        features = {
+            "observation": _bytes_feature(step["observation"]),
+            "action": _bytes_feature(step["action"]),
+            "reward": _float_feature(step["reward"]),
+            "discount": _float_feature(step["discount"])
+        }
+
+        if "step_metadata" in step:
+            features["step_metadata"] = _bytes_feature(step["step_metadata"])
+
+        return tf.train.Example(features=tf.train.Features(feature=features))

@@ -4,7 +4,7 @@ import time
 import transforms3d as t3d
 from vr_test import get_transforms
 import matplotlib.pyplot as plt
-import log
+from log import RLDSLogger
 
 # For custom wrapper over xArm6 Python API
 # export PYTHONPATH=$PYTHONPATH:/home/erl-tianyu/dwait_local_repo/erl_xArm/
@@ -181,7 +181,8 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
     fetch_init_poses()
     prev_actual_robot_jang = np.array(init_jangs)
 
-    log_file = open("rlds_log.json", "w")
+    logger = RLDSLogger(log_dir="rlds_log")
+    logger.start_episode()
 
     while True:
         loop_start_time = time.time()
@@ -199,8 +200,8 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
             recover_oob_from_pos = None
             print("\nController traveled too far while out of bounds for detection. Exiting to avoid potentially unsafe situation")
             break
-        
-        log.write_log(xarm, log_file)
+
+        logger.log_step(xarm)
 
         trajectory.append(eef_pos_target)
 
@@ -299,6 +300,10 @@ def robot_control_xarmapi(control_mode="joint_vel", use_position_pid=True, use_j
         if loop_duration < 1/control_freq:
             time.sleep(1/control_freq - loop_duration)
         duration += 1/control_freq
+
+    logger.end_episode()
+    logger.save()
+
     xarm.reset()
     xarm.close()
 

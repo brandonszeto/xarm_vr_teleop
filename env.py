@@ -1,14 +1,21 @@
 import envlogger
 import numpy as np
 import time
-from gym import spaces
+from dm_env import specs
 
 class RoboticArmEnv:
     def __init__(self, xarm):
         self.xarm = xarm
         self.state = self.get_joint_angles()
-        self.observation_space = spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32)
-        self.action_space = spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32)
+        self.observation_space = specs.Array(shape=(6,), dtype=np.float32,
+                                             name='observation')
+        self.action_space = specs.Array(shape=(6,), dtype=np.float32,
+                                             name='action')
+        self.reward_space = specs.Array(shape=(), dtype=np.float32,
+                                             name='reward')
+        self.discount_space = specs.BoundedArray(shape=(), dtype=np.float32,
+                                             minimum=0.0, maximum=1.0,
+                                                 name='discount')
 
     def reset(self):
         self.state = self.get_joint_angles()
@@ -32,3 +39,9 @@ class RoboticArmEnv:
 
     def action_spec(self):
         return self.action_space
+
+    def discount_spec(self):
+        return self.discount_space
+
+    def reward_spec(self):
+        return self.reward_space

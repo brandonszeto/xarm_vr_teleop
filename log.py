@@ -1,4 +1,5 @@
 import tensorflow as tf
+import json
 import rlds
 import os
 
@@ -50,8 +51,17 @@ class RLDSLogger:
 
     def _create_tf_example(self, step):
         def _bytes_feature(value):
-            return tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.serialize_tensor(tf.convert_to_tensor(value)).numpy()]))
-        
+            if isinstance(value, dict):
+                # Serialize dictionary as shown earlier
+                serialized_dict = json.dumps(value).encode('utf-8')
+                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[serialized_dict]))
+            elif isinstance(value, str):
+                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value.encode('utf-8')]))
+            else:
+                # Convert value to a bytes representation
+                value_bytes = tf.io.serialize_tensor(tf.convert_to_tensor(value)).numpy()
+                return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value_bytes]))        
+
         def _float_feature(value):
             return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
